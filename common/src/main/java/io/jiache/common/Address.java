@@ -1,4 +1,6 @@
-package io.jiache.util;
+package io.jiache.common;
+
+import io.jiache.util.Assert;
 
 /**
  * Created by jiacheng on 17-9-24.

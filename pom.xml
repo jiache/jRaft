@@ -6,7 +6,17 @@
 
     <groupId>jiache</groupId>
     <artifactId>jRaft</artifactId>
+    <packaging>pom</packaging>
     <version>1.0</version>
+    <modules>
+        <module>client</module>
+        <module>original-server</module>
+        <module>offload-server</module>
+        <module>executable</module>
+        <module>common</module>
+        <module>test</module>
+    </modules>
+
 
 
 </project>

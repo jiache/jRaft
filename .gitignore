@@ -2,4 +2,6 @@
 *.class
 target
 *.iml
+*.ipr
+*.iws
 *.log

@@ -9,15 +9,17 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>core</artifactId>
+    <artifactId>executable</artifactId>
     <packaging>pom</packaging>
     <version>1.0</version>
+
     <modules>
         <module>offload-leader</module>
         <module>offload-follower</module>
         <module>offload-secretary</module>
         <module>original-leader</module>
-	<module>original-follower</module>
+	    <module>original-follower</module>
+        <module>executable-client</module>
     </modules>
 
 
