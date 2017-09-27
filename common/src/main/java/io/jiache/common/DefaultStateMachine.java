@@ -2,6 +2,7 @@ package io.jiache.common;
 
 import io.jiache.util.Assert;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -10,8 +11,8 @@ import java.util.Map;
 public class DefaultStateMachine implements StateMachine {
     private Map<String, String> storage;
 
-    public DefaultStateMachine(Map<String, String> storage) {
-        this.storage = storage;
+    public DefaultStateMachine() {
+        this.storage = new HashMap<String, String>();
     }
 
     public void commit(Entry entry) {
