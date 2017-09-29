@@ -6,13 +6,13 @@ package io.jiache.util;
 public class Assert {
     private Assert(){}
 
-    public static <T> void checkNull(T obj, String name) {
+    public static <T> void checkNull(T obj, final String name) {
         if(obj == null) {
             throw new NullPointerException(name + " cannot be null.");
         }
     }
 
-    public static void check(boolean expression, String errorMessage) {
+    public static void check(boolean expression, final String errorMessage) {
         if(!expression) {
             throw new IllegalArgumentException(errorMessage);
         }

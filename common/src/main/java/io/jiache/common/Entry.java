@@ -6,17 +6,15 @@ package io.jiache.common;
 public class Entry {
     private String key;
     private String value;
-    private int term;
-    private int index;
+    private long term;
 
     public Entry() {
     }
 
-    public Entry(String key, String value, int term, int index) {
+    public Entry(String key, String value, long term) {
         this.key = key;
         this.value = value;
         this.term = term;
-        this.index = index;
     }
 
     public String getKey() {
@@ -35,30 +33,40 @@ public class Entry {
         this.value = value;
     }
 
-    public int getTerm() {
+    public long getTerm() {
         return term;
     }
 
-    public void setTerm(int term) {
+    public void setTerm(long term) {
         this.term = term;
     }
 
-    public int getIndex() {
-        return index;
-    }
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
 
-    public void setIndex(int index) {
-        this.index = index;
+        Entry entry = (Entry) o;
+
+        if (term != entry.term) return false;
+        if (key != null ? !key.equals(entry.key) : entry.key != null) return false;
+        return value != null ? value.equals(entry.value) : entry.value == null;
     }
 
     @Override
-    public String
-    toString() {
+    public int hashCode() {
+        int result = key != null ? key.hashCode() : 0;
+        result = 31 * result + (value != null ? value.hashCode() : 0);
+        result = 31 * result + (int) (term ^ (term >>> 32));
+        return result;
+    }
+
+    @Override
+    public String toString() {
         return "Entry{" +
                 "key='" + key + '\'' +
                 ", value='" + value + '\'' +
                 ", term=" + term +
-                ", index=" + index +
                 '}';
     }
 }

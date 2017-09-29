@@ -12,16 +12,19 @@ public class TestRocksdb {
     }
 
     public static void main(String[] args) throws RocksDBException {
-        try(
-                Options options = new Options().setCreateIfMissing(true);
-                RocksDB db = RocksDB.open(options, "testDb")
-        ){
-            for(int i=1; i<100; ++i) {
-                db.put(("key"+i).getBytes(),("value"+i).getBytes());
-            }
-            for(int i=1; i<100; ++i) {
-                System.out.println(new String(db.get(("key"+i).getBytes())));
-            }
-        }
+
+            Options options = new Options().setCreateIfMissing(true);
+            RocksDB db = RocksDB.open(options, "/home/jiacheng/Desktop/jRaft/common/testLog");
+//            for(int i=0; i<1000; ++i) {
+//                db.put(("hahaha"+(i%105)).getBytes(), ("value"+i).getBytes());
+//            }
+//            for(int i=0; i<100; ++i) {
+//                String value = new String(db.get(("key"+i).getBytes()));
+//                System.out.println(value);
+//            }
+        db.compactRange();
+        System.out.println(db.getLatestSequenceNumber());
+
+
     }
 }
