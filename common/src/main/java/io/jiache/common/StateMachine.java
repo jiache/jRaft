@@ -6,5 +6,7 @@ package io.jiache.common;
 public interface StateMachine {
     void commit(Entry entry);
 
+    void commit(Entry... entries);
+
     String get(String key);
 }

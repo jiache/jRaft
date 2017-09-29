@@ -11,12 +11,6 @@
 
     <artifactId>test</artifactId>
 
-    <dependencies>
-        <dependency>
-            <groupId>org.rocksdb</groupId>
-            <artifactId>rocksdbjni</artifactId>
-            <version>5.5.1</version>
-        </dependency>
-    </dependencies>
+
 
 </project>
