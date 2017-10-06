@@ -29,9 +29,10 @@ public class DefaultLog implements Log{
 
     public static Log newInstance(String walPath) {
         DefaultLog log = new DefaultLog();
-        log.setLastIndex(-1);
-        log.setLastTerm(-1);
-        log.setWal(DefaultWal.newInstance(walPath));
+        Wal wal = DefaultWal.newInstance(walPath);
+        log.setLastIndex(wal.getLastIndex());
+        log.setLastTerm(wal.getLastTerm());
+        log.setWal(wal);
         return log;
     }
 
@@ -51,12 +52,19 @@ public class DefaultLog implements Log{
     }
 
     @Override
+    public Entry[] get(long[] index) {
+        return wal.get(index);
+    }
+
+    @Override
     public synchronized void append(Entry entry) {
         Assert.checkNull(entry, "entry");
         Assert.check(!(entry.getTerm()<getLastTerm()), "entry term error");
         setLastTerm(entry.getTerm());
         ++lastIndex;
         wal.put(lastIndex, entry);
+        wal.setLastIndex(lastIndex);
+        wal.setLastTerm(lastTerm);
     }
 
     @Override
@@ -64,9 +72,11 @@ public class DefaultLog implements Log{
         Assert.checkNull(entries, "entries");
         Assert.check(!(entries[0].getTerm()<getLastTerm()), "entries term error");
         setLastTerm(entries[entries.length-1].getTerm());
-        setLastIndex(lastIndex+entries.length);
         long[] indexArray = LongStream.range(lastIndex+1, lastIndex+1+entries.length).toArray();
+        setLastIndex(lastIndex+entries.length);
         wal.put(indexArray, entries);
+        wal.setLastIndex(lastIndex);
+        wal.setLastTerm(lastTerm);
     }
 
     @Override

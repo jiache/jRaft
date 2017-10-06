@@ -7,4 +7,8 @@ public interface Wal {
     Entry[] get(long[] index);
     void delete(long index);
     void delete(long[] index);
+    long getLastIndex();
+    void setLastIndex(long lastIndex);
+    long getLastTerm();
+    void setLastTerm(long lastTerm);
 }
