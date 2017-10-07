@@ -1,6 +1,7 @@
 package io.jiache.common;
 
 import io.jiache.util.Assert;
+import org.rocksdb.RocksDBException;
 
 import java.util.stream.LongStream;
 
@@ -27,7 +28,7 @@ public class DefaultLog implements Log{
         this.lastIndex = lastIndex;
     }
 
-    public static Log newInstance(String walPath) {
+    public static Log newInstance(String walPath) throws RocksDBException {
         DefaultLog log = new DefaultLog();
         Wal wal = DefaultWal.newInstance(walPath);
         log.setLastIndex(wal.getLastIndex());
