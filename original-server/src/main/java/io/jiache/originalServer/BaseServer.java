@@ -3,7 +3,6 @@ package io.jiache.originalServer;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 import io.jiache.common.*;
-import io.jiache.grpc.*;
 import io.jiache.grpc.original.*;
 import io.jiache.util.Serializer;
 import org.rocksdb.RocksDBException;
@@ -28,23 +27,31 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     protected Long[] nextIndex;
 
     protected BaseServer(RaftConf raftConf, int thisIndex) {
+        term = 0;
+        lastCommitIndex = -1;
         try {
-            lastCommitIndex = -1;
             log = new DefaultLog(raftConf.getToken()+"-"+UUID.randomUUID().toString());
-            stateMachine = new DefaultStateMachine();
-            io.grpc.Server server = ServerBuilder.forPort(raftConf.getAddressList().get(thisIndex).getPort())
-                    .addService(this)
-                    .build()
-                    .start();
-            Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
-            server.awaitTermination();
-            executorService = Executors.newCachedThreadPool();
-            this.raftConf = raftConf;
-            this.thisIndex = thisIndex;
-            nextIndex = new Long[raftConf.getAddressList().size()];
-        } catch (IOException | InterruptedException | RocksDBException e) {
+        } catch (RocksDBException e) {
             e.printStackTrace();
         }
+        stateMachine = new DefaultStateMachine();
+        executorService = Executors.newCachedThreadPool();
+        executorService.submit(()-> {
+            try {
+                io.grpc.Server server = ServerBuilder.forPort(raftConf.getAddressList().get(thisIndex).getPort())
+                        .addService(this)
+                        .build()
+                        .start();
+                Runtime.getRuntime().addShutdownHook(new Thread(server::shutdown));
+                server.awaitTermination();
+            } catch (InterruptedException | IOException e) {
+                e.printStackTrace();
+            }
+        });
+        this.raftConf = raftConf;
+        this.thisIndex = thisIndex;
+        nextIndex = new Long[raftConf.getAddressList().size()];
+
     }
 
     public synchronized void commit(long toIndex) {
@@ -75,7 +82,14 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
         }
         int committedIndex0 = request.getCommittedIndex();
         log.append(entry0);
+        term = term0;
         commit(committedIndex0);
+        AppendEntriesResponse response = AppendEntriesResponse.newBuilder()
+                .setTerm(this.term)
+                .setSuccess(true)
+                .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
     }
 
     @Override  // TODO

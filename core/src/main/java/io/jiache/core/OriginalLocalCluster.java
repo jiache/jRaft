@@ -8,6 +8,7 @@ import io.jiache.originalServer.Follower;
 import io.jiache.originalServer.Leader;
 import io.jiache.util.Random;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -18,6 +19,7 @@ public class OriginalLocalCluster implements LocalCluster{
     private boolean running;
 
     public OriginalLocalCluster(Address localAddress, RaftConf raftConf) {
+        cluster = new ArrayList<>();
         List<Address> addresses = raftConf.getAddressList();
         int leaderIndex = raftConf.getLeaderIndex();
         for(int i=0; i<addresses.size(); ++i) {
