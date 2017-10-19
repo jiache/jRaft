@@ -31,4 +31,35 @@ public class LogTest {
         Arrays.stream(resultEntries).forEach(System.out::println);
     }
 
+    @Test
+    public void mulThreadRocksdbTest() throws RocksDBException {
+        RocksDB.loadLibrary();
+        RocksDB db = RocksDB.open(new Options().setCreateIfMissing(true), "testDB");
+        ExecutorService executor = Executors.newCachedThreadPool();
+        CompletableFuture<Void> future1 = CompletableFuture.runAsync(()->{
+            try {
+                for(int i=0; i<10000; ++i) {
+                    db.put((""+i).getBytes(), (i+" thread1").getBytes());
+                }
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, executor);
+        CompletableFuture<Void> future2 = CompletableFuture.runAsync(()->{
+            try {
+                for(int i=0; i<10000; ++i) {
+                    db.put((""+i).getBytes(), (i+"thread2").getBytes());
+                }
+            }catch (Exception e) {
+                e.printStackTrace();
+            }
+        }, executor);
+        future1.join();
+        future2.join();
+        for(int i=0; i<10000; ++i) {
+            String s = new String(db.get((""+i).getBytes()));
+            System.out.println(s);
+        }
+    }
+
 }

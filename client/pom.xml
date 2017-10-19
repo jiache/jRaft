@@ -12,5 +12,11 @@
 
     <artifactId>client</artifactId>
 
-
+    <dependencies>
+        <dependency>
+            <groupId>jiache</groupId>
+            <artifactId>core</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
 </project>

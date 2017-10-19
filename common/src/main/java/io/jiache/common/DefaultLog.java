@@ -16,6 +16,14 @@ public class DefaultLog implements Log{
     private DefaultLog() {
     }
 
+    public DefaultLog(String walPath) throws RocksDBException {
+        DefaultLog log = new DefaultLog();
+        Wal wal = new DefaultWal(walPath);
+        log.setLastIndex(wal.getLastIndex());
+        log.setLastTerm(wal.getLastTerm());
+        log.setWal(wal);
+    }
+
     private void setWal(Wal wal) {
         this.wal = wal;
     }

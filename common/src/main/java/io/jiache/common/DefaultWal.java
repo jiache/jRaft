@@ -20,6 +20,14 @@ public class DefaultWal implements Wal {
     private DefaultWal() {
     }
 
+    public DefaultWal(String walPath) throws RocksDBException {
+        Assert.checkNull(walPath, "wal path");
+        Options options = new Options().setCreateIfMissing(true);
+        rocksDB = RocksDB.open(options,walPath);
+        DefaultWal wal = new DefaultWal();
+        wal.rocksDB = rocksDB;
+    }
+
     public static DefaultWal newInstance(String walPath) throws RocksDBException {
         Assert.checkNull(walPath, "wal path");
         Options options = new Options().setCreateIfMissing(true);
