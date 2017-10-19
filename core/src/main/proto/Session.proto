@@ -1,0 +1,41 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "io.jiache.grpc";
+option java_outer_classname = "SessionProto";
+
+package io.jiache.grpc;
+
+service SessionService{
+    rpc createCluster (CreateRequest) returns (CreateResponse) {}
+    rpc put (PutRequest) returns (PutResponse) {}
+    rpc get (GetRequest) returns (GetResponse) {}
+}
+
+message CreateRequest{
+    string raftConf = 1;
+}
+
+message CreateResponse{
+    bool success = 1;
+}
+
+message PutRequest{
+    string key = 1;
+    string value = 2;
+    string token = 3;
+}
+
+message PutResponse{
+    bool success = 1;
+}
+
+message GetRequest{
+    string key = 1;
+    string token = 2;
+}
+
+message GetResponse{
+    bool success = 1;
+    string value = 2;
+}

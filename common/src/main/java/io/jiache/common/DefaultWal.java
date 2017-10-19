@@ -1,34 +1,46 @@
 package io.jiache.common;
 
 import io.jiache.util.Assert;
+import io.jiache.util.ByteUtils;
 import io.jiache.util.Serializer;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
 public class DefaultWal implements Wal {
+    private static final byte[] LAST_INDEX_KEY = "LAST_INDEX".getBytes();
+    private static final byte[] LAST_TERM_KEY = "LAST_TERM".getBytes();
+
     static {
         RocksDB.loadLibrary();
     }
 
-    private String walPath;
+    private RocksDB rocksDB;
 
-    private DefaultWal(String walPath) {
-        this.walPath = walPath;
+    private DefaultWal() {
     }
 
-    public static DefaultWal newInstance(String walPath) {
-        return new DefaultWal(walPath);
+    public DefaultWal(String walPath) throws RocksDBException {
+        Assert.checkNull(walPath, "wal path");
+        Options options = new Options().setCreateIfMissing(true);
+        rocksDB = RocksDB.open(options,walPath);
+        DefaultWal wal = new DefaultWal();
+        wal.rocksDB = rocksDB;
+    }
+
+    public static DefaultWal newInstance(String walPath) throws RocksDBException {
+        Assert.checkNull(walPath, "wal path");
+        Options options = new Options().setCreateIfMissing(true);
+        RocksDB rocksDB = RocksDB.open(options,walPath);
+        DefaultWal wal = new DefaultWal();
+        wal.rocksDB = rocksDB;
+        return wal;
     }
 
     @Override
     public void put(long index, Entry entry) {
-        Assert.checkNull(walPath, "wal path");
-        try(
-                Options options = new Options().setCreateIfMissing(true);
-                RocksDB wal = RocksDB.open(options, walPath)
-        ) {
-            wal.put(new byte[]{(byte) index}, Serializer.serialize(entry));
+        try {
+            rocksDB.put(ByteUtils.longToBytes(index), Serializer.serialize(entry));
         } catch (RocksDBException e) {
             e.printStackTrace();
         }
@@ -36,14 +48,9 @@ public class DefaultWal implements Wal {
 
     @Override
     public void put(long[] index, Entry[] entries) {
-        Assert.checkNull(walPath, "wal path");
-        Assert.check(index.length == entries.length, "length of index array and entry array is not same.");
-        try(
-                Options options = new Options().setCreateIfMissing(true);
-                RocksDB wal = RocksDB.open(options, walPath)
-        ) {
+        try {
             for(int i=0; i<index.length; ++i) {
-                wal.put(new byte[]{(byte) index[i]}, Serializer.serialize(entries[i]));
+                rocksDB.put(ByteUtils.longToBytes(index[i]), Serializer.serialize(entries[i]));
             }
         } catch (RocksDBException e) {
             e.printStackTrace();
@@ -52,12 +59,9 @@ public class DefaultWal implements Wal {
 
     @Override
     public Entry get(long index) {
-        Assert.checkNull(walPath, "wal path");
-        byte[] byteEntry = null;
-        try(
-                RocksDB wal = RocksDB.open(walPath)
-        ) {
-            byteEntry = wal.get(new byte[]{(byte) index});
+        byte[] byteEntry = new byte[0];
+        try {
+            byteEntry = rocksDB.get(ByteUtils.longToBytes(index));
         } catch (RocksDBException e) {
             e.printStackTrace();
         }
@@ -67,14 +71,10 @@ public class DefaultWal implements Wal {
 
     @Override
     public Entry[] get(long[] index) {
-        Assert.checkNull(walPath, "wal path");
-        Assert.checkNull(index, "index array");
         Entry[] entries = new Entry[index.length];
-        try(
-                RocksDB wal = RocksDB.open(walPath)
-        ) {
+        try {
             for(int i=0; i<index.length; ++i) {
-                entries[i] = Serializer.deSerialize(wal.get(new byte[]{(byte) index[i]}), Entry.class);
+                entries[i] = Serializer.deSerialize(rocksDB.get(ByteUtils.longToBytes(i)), Entry.class);
             }
         } catch (RocksDBException e) {
             e.printStackTrace();
@@ -84,11 +84,8 @@ public class DefaultWal implements Wal {
 
     @Override
     public void delete(long index) {
-        Assert.checkNull(walPath, "wal path");
-        try(
-                RocksDB wal = RocksDB.open(walPath)
-        ) {
-            wal.delete(new byte[]{(byte) index});
+        try {
+            rocksDB.delete(ByteUtils.longToBytes(index));
         } catch (RocksDBException e) {
             e.printStackTrace();
         }
@@ -96,14 +93,58 @@ public class DefaultWal implements Wal {
 
     @Override
     public void delete(long[] index) {
-        Assert.checkNull(walPath, "wal path");
-        Assert.checkNull(index, "wal path");
-        try(
-                RocksDB wal = RocksDB.open(walPath)
-        ) {
+        try {
             for(int i=0; i<index.length; ++i) {
-                wal.delete(new byte[]{(byte) index[i]});
+                rocksDB.delete(ByteUtils.longToBytes(index[i]));
             }
+        } catch (RocksDBException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public long getLastIndex() {
+        long lastIndex = -1;
+        byte[] bytes = null;
+        try {
+            bytes = rocksDB.get(LAST_INDEX_KEY);
+        } catch (RocksDBException e) {
+            e.printStackTrace();
+        }
+        if(bytes != null) {
+            lastIndex = ByteUtils.bytesToLong(bytes);
+        }
+        return lastIndex;
+    }
+
+    @Override
+    public void setLastIndex(long lastIndex) {
+        try {
+            rocksDB.put(LAST_INDEX_KEY, ByteUtils.longToBytes(lastIndex));
+        } catch (RocksDBException e1) {
+            e1.printStackTrace();
+        }
+    }
+
+    @Override
+    public long getLastTerm() {
+        long lastTerm = 0;
+        byte[] bytes = null;
+        try {
+            bytes = rocksDB.get(LAST_TERM_KEY);
+        } catch (RocksDBException e1) {
+            e1.printStackTrace();
+        }
+        if(bytes != null) {
+            lastTerm = ByteUtils.bytesToLong(bytes);
+        }
+        return lastTerm;
+    }
+
+    @Override
+    public void setLastTerm(long lastTerm) {
+        try {
+            rocksDB.put(LAST_TERM_KEY, ByteUtils.longToBytes(lastTerm));
         } catch (RocksDBException e) {
             e.printStackTrace();
         }

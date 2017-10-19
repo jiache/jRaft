@@ -12,13 +12,15 @@ import java.util.concurrent.ConcurrentHashMap;
 public class DefaultStateMachine implements StateMachine {
     private volatile Map<String, String> storage;
 
-    private DefaultStateMachine() {
+    public DefaultStateMachine() {
+        storage = new ConcurrentHashMap<>();
     }
 
     private void setStorage(Map<String, String> storage) {
         this.storage = storage;
     }
 
+    @Deprecated
     public static StateMachine newInstance() {
         DefaultStateMachine stateMachine = new DefaultStateMachine();
         stateMachine.setStorage(new ConcurrentHashMap<>());
@@ -30,7 +32,7 @@ public class DefaultStateMachine implements StateMachine {
         storage.put(entry.getKey(), entry.getValue());
     }
 
-    public void commit(Entry... entries) {
+    public void commit(Entry[] entries) {
         Arrays.stream(entries).forEach(this::commit);
     }
 

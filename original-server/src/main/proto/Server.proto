@@ -7,33 +7,29 @@ option java_outer_classname = "ServerProto";
 package io.jiache.grpc.original;
 
 service ServerService{
-    rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponce) {}
-    rpc RequestVote (RequestVoteRequest) returns (RequestVoteResponce) {}
+    rpc AppendEntries (AppendEntriesRequest) returns (AppendEntriesResponse) {}
+    rpc RequestVote (RequestVoteRequest) returns (RequestVoteResponse) {}
 }
 
 message AppendEntriesRequest{
     int32 term = 1;
-    string leaderHost = 2;
-    int32 leaderPort = 3;
     int32 committedIndex = 4;
     int32 preLogIndex = 5;
     string entry = 6;
 }
 
-message AppendEntriesResponce{
+message AppendEntriesResponse{
     int32 term = 1;
     bool success = 2;
 }
 
 message RequestVoteRequest{
     int32 term = 1;
-    string candidateHost = 2;
-    int32 candidatePort = 3;
     int32 lastLogIndex = 4;
     int32 lastLogTerm = 5;
 }
 
-message RequestVoteResponce{
+message RequestVoteResponse{
     int32 term = 1;
     bool voteGranted = 2;
 }
