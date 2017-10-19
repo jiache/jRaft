@@ -27,7 +27,7 @@ public class OriginalTest {
         serverAddresses.add(new Address("127.0.0.1", 9903));
         serverAddresses.add(new Address("127.0.0.1", 9904));
         Client client = new Client(sessions);
-        client.newRaftCluster("raft0", serverAddresses,2,null);
+        client.newRaftCluster("raft0", serverAddresses,0,null);
 
         client.put("raft0", "myKey", "myValue").join();
         TimeUnit.SECONDS.sleep(1);

@@ -12,5 +12,12 @@
 
     <artifactId>offload-server</artifactId>
 
+    <dependencies>
+        <dependency>
+            <groupId>jiache</groupId>
+            <artifactId>common</artifactId>
+            <version>1.0</version>
+        </dependency>
+    </dependencies>
 
 </project>

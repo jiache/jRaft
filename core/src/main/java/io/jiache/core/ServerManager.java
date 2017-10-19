@@ -18,9 +18,7 @@ public class ServerManager {
     }
 
     public synchronized void addAndExecuteTockenLocal(RaftConf raftConf) {
-        System.out.println("manager 21");
         LocalCluster localCluster = LocalClusterFactory.createLocalCluster(address, raftConf);
-        System.out.println("server manager 22 token "+raftConf.getToken());
         tokenAndLocalCluster.put(raftConf.getToken(), localCluster);
         LocalCluster cluster = tokenAndLocalCluster.get(raftConf.getToken());
         cluster.start();

@@ -32,7 +32,6 @@ public class Leader extends BaseServer{
         // 扫描nextIndex, 执行commit
         Thread commitThread = new Thread(() -> {
             Long[] sortedNextIndex;
-            System.out.println("leader 35 leader started");
             for(;;) {
                 sortedNextIndex = Arrays.copyOfRange(nextIndex, 0, nextIndex.length);
                 Arrays.sort(sortedNextIndex);
