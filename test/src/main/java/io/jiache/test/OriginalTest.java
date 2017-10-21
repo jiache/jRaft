@@ -1,13 +1,10 @@
 package io.jiache.test;
 
 
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.jiache.client.Client;
 import io.jiache.common.Address;
 import io.jiache.core.MainServer;
 import io.jiache.core.Session;
-import io.jiache.grpc.SessionServiceGrpc;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -29,10 +26,22 @@ public class OriginalTest {
         Client client = new Client(sessions);
         client.newRaftCluster("raft0", serverAddresses,0,null);
 
-        client.put("raft0", "myKey", "myValue").join();
-        TimeUnit.SECONDS.sleep(1);
-        System.out.println(client.get("raft0","myKey").join());
-
-
+        for(int i=0; i<1000; ++i) {
+            String key = "myKey"+i;
+            String value = "myValue"+i;
+            client.put("raft0", key, value).join();
+        }
+        for(int i=0; i<1000; ++i) {
+            String key = "myKey"+i;
+            String value;
+            while(true) {
+                value = client.get("raft0", key).join();
+                if(value != null) {
+                    System.out.println(value);
+                    break;
+                }
+                Thread.interrupted();
+            }
+        }
     }
 }

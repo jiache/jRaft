@@ -31,10 +31,10 @@ public class SessionListener {
         @Override
         public void createCluster(CreateRequest request, StreamObserver<CreateResponse> responseObserver) {
             RaftConf raftConf = Serializer.deSerialize(request.getRaftConf().getBytes(), RaftConf.class);
-            System.out.println("before execute tocken local");
             serverManager.addAndExecuteTockenLocal(raftConf);
-            System.out.println("invoke create SessionListener 34 "+Serializer.serialize(raftConf));
-            CreateResponse response = CreateResponse.newBuilder().setSuccess(true).build();
+            CreateResponse response = CreateResponse.newBuilder()
+                    .setSuccess(true)
+                    .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         }
@@ -45,7 +45,6 @@ public class SessionListener {
             String value = request.getValue();
             String token = request.getToken();
             serverManager.put(token, key, value);
-            System.out.println("invoke put SessionListener 46");
             PutResponse response = PutResponse.newBuilder()
                     .setSuccess(true)
                     .build();
@@ -57,13 +56,14 @@ public class SessionListener {
         public void get(GetRequest request, StreamObserver<GetResponse> responseObserver) {
             String key = request.getKey();
             String token = request.getToken();
-            System.out.println("invoke get SessionListener 57");
             String value = serverManager.get(token, key);
-            GetResponse response = GetResponse.newBuilder()
-                    .setSuccess(true)
-                    .setValue(value)
-                    .build();
-            responseObserver.onNext(response);
+            GetResponse.Builder responseBuilder = GetResponse.newBuilder();
+            if(value == null) {
+                responseBuilder.setSuccess(false).setValue("");
+            } else {
+                responseBuilder.setSuccess(true).setValue(value);
+            }
+            responseObserver.onNext(responseBuilder.build());
             responseObserver.onCompleted();
         }
     }

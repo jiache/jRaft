@@ -13,15 +13,18 @@ public class DefaultLog implements Log{
     private volatile long lastIndex;
     private volatile long lastTerm;
 
+    private void updateFromWal() {
+        this.lastIndex = wal.getLastIndex();
+        this.lastTerm = wal.getLastTerm();
+    }
+
     private DefaultLog() {
     }
 
     public DefaultLog(String walPath) throws RocksDBException {
-        DefaultLog log = new DefaultLog();
         Wal wal = new DefaultWal(walPath);
-        log.setLastIndex(wal.getLastIndex());
-        log.setLastTerm(wal.getLastTerm());
-        log.setWal(wal);
+        this.wal = wal;
+        updateFromWal();
     }
 
     private void setWal(Wal wal) {
@@ -77,7 +80,7 @@ public class DefaultLog implements Log{
     }
 
     @Override
-    public synchronized void append(Entry... entries) {
+    public synchronized void append(Entry[] entries) {
         Assert.checkNull(entries, "entries");
         Assert.check(!(entries[0].getTerm()<getLastTerm()), "entries term error");
         setLastTerm(entries[entries.length-1].getTerm());

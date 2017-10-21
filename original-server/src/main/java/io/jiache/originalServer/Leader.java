@@ -13,7 +13,7 @@ import java.util.Arrays;
 import java.util.List;
 
 public class Leader extends BaseServer{
-    List<ServerServiceGrpc.ServerServiceBlockingStub> blockingStubList;
+    private List<ServerServiceGrpc.ServerServiceBlockingStub> blockingStubList;
 
     public Leader(RaftConf raftConf, int thisIndex) {
         super(raftConf, thisIndex);
@@ -22,7 +22,8 @@ public class Leader extends BaseServer{
         for(int i=0; i<addresses.size(); ++i) {
             ServerServiceGrpc.ServerServiceBlockingStub blockingStub = null;
             if(i!=thisIndex) {
-                ManagedChannel managedChannel = ManagedChannelBuilder.forAddress(addresses.get(i).getHost(), addresses.get(i).getPort())
+                ManagedChannel managedChannel = ManagedChannelBuilder
+                        .forAddress(addresses.get(i).getHost(), addresses.get(i).getPort())
                         .usePlaintext(true)
                         .build();
                 blockingStub = ServerServiceGrpc.newBlockingStub(managedChannel);
@@ -35,9 +36,11 @@ public class Leader extends BaseServer{
             for(;;) {
                 sortedNextIndex = Arrays.copyOfRange(nextIndex, 0, nextIndex.length);
                 Arrays.sort(sortedNextIndex);
-                long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2];
-                commit(newCommitIndex);
-                lastCommitIndex = newCommitIndex;
+                long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2+1]-1;
+                if(newCommitIndex > lastCommitIndex) {
+                    commit(newCommitIndex);
+                    lastCommitIndex = newCommitIndex;
+                }
             }
         });
         executorService.submit(commitThread);
@@ -62,24 +65,36 @@ public class Leader extends BaseServer{
         for(;;) {
             for (int i = 0; i < addresses.size(); ++i) {
                 long lastIndex = log.getLastIndex();
-                if (i != thisIndex && nextIndex[i]<=lastIndex) {
+                if (i != thisIndex) {
                     ServerServiceGrpc.ServerServiceBlockingStub blockingStub
                             = blockingStubList.get(i);
-                    Entry entry = log.get(nextIndex[i]);
+                    Entry entry;
+                    if(nextIndex[i]<=log.getLastIndex()) {
+                        entry = log.get(nextIndex[i]);
+                    } else {
+                        entry = new Entry(null, null, term);
+                    }
                     AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
                             .setCommittedIndex((int) lastCommitIndex)
                             .setTerm(term)
                             .setEntry(new String(Serializer.serialize(entry)))
-                            .setPreLogIndex((int) lastIndex)
+                            .setPreLogIndex((int) (nextIndex[i]-1))
                             .build();
                     int finalI = i;
                     executorService.submit(() -> {
                         AppendEntriesResponse response = blockingStub.appendEntries(request);
-                        if(response.getSuccess()) {
+                        if(response.getSuccess() && nextIndex[finalI]<=lastIndex) {
                             ++nextIndex[finalI];
+                        } else if(term < response.getTerm()) {
+                            term = response.getTerm(); // TODO become follower
                         }
                     });
                 }
+            }
+            try {
+                Thread.sleep(HEART_BEAT_INTERVAL);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
     }

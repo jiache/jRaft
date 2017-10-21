@@ -49,7 +49,7 @@ public class Session {
                     .setToken(token)
                     .build();
             GetResponse responce = sessionServiceBlockingStub.get(request);
-            return responce.getValue();
+            return responce.getSuccess()?responce.getValue():null;
         });
     }
 

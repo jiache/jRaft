@@ -51,15 +51,18 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
         this.raftConf = raftConf;
         this.thisIndex = thisIndex;
         nextIndex = new Long[raftConf.getAddressList().size()];
-
+        Arrays.fill(nextIndex, 0L);
     }
 
     public synchronized void commit(long toIndex) {
+        toIndex = Math.min(log.getLastIndex(),toIndex);
         int length = (int) (toIndex-lastCommitIndex);
-        long[] logIndex = LongStream.range(lastCommitIndex+1, length).toArray();
-        Entry[] entries = log.get(logIndex);
-        stateMachine.commit(entries);
-        lastCommitIndex = toIndex;
+        if(length > 0) {
+            long[] logIndex = LongStream.range(lastCommitIndex + 1, toIndex+1).toArray();
+            Entry[] entries = log.get(logIndex);
+            stateMachine.commit(entries);
+            lastCommitIndex = toIndex;
+        }
     }
 
     public String get(String key) {
@@ -69,26 +72,36 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     @Override
     public synchronized void appendEntries(AppendEntriesRequest request, StreamObserver<AppendEntriesResponse> responseObserver) {
         int term0 = request.getTerm();
+        AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder();
         if(term0<term) {
             responseObserver.onCompleted();
-            return;
-        }
-        int preLogIndex0 = request.getPreLogIndex();
-        Entry entry0 = Serializer.deSerialize(request.getEntry().getBytes(), Entry.class);
-
-        if(!log.match(entry0.getTerm(),preLogIndex0)) {
+            responseBuilder.setTerm(term)
+                    .setSuccess(false);
+            responseObserver.onNext(responseBuilder.build());
             responseObserver.onCompleted();
             return;
         }
-        int committedIndex0 = request.getCommittedIndex();
-        log.append(entry0);
         term = term0;
-        commit(committedIndex0);
-        AppendEntriesResponse response = AppendEntriesResponse.newBuilder()
-                .setTerm(this.term)
-                .setSuccess(true)
-                .build();
-        responseObserver.onNext(response);
+        int preLogIndex0 = request.getPreLogIndex();
+        Entry entry0 = Serializer.deSerialize(request.getEntry().getBytes(), Entry.class);
+        if(!log.match(entry0.getTerm(),preLogIndex0)) {
+            responseBuilder.setSuccess(false)
+                    .setTerm(term);
+            responseObserver.onNext(responseBuilder.build());
+            responseObserver.onCompleted();
+            return;
+        }
+        if(entry0.getKey() != null) {
+            log.append(entry0);
+        }
+        int committedIndex0 = request.getCommittedIndex();
+        if(committedIndex0>lastCommitIndex) {
+            commit(committedIndex0);
+        }
+        lastCommitIndex = committedIndex0;
+        responseBuilder.setTerm(term)
+                .setSuccess(true);
+        responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
     }
 
