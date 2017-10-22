@@ -93,6 +93,6 @@ public class DefaultLog implements Log{
 
     @Override
     public boolean match(long lastTerm, long lastIndex) {
-        return this.lastIndex==lastIndex && this.lastTerm==lastTerm;
+        return this.getLastIndex()==lastIndex && this.getLastTerm()==lastTerm;
     }
 }

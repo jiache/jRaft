@@ -1,7 +1,5 @@
 package io.jiache.common;
 
-import org.rocksdb.RocksDBException;
-
 public interface Wal {
     void put(long index, Entry entry) ;
     void put(long[] index, Entry[] entries);

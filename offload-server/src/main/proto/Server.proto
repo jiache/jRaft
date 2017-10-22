@@ -12,12 +12,15 @@ service ServerService {
 }
 
 message CallBackRequest{
-    int32 replicatedLogIndex = 1;
+    int32 term = 1;
     int32 serverIndex = 2;
+    int32 latestCommitIndex = 3;
 }
 
 message CallBackResponse{
     bool success = 1;
+    int32 term = 2;
+    int32 replicatedIndex = 3;
 }
 
 message AppendEntriesRequest{

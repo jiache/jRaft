@@ -55,14 +55,11 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     }
 
     public synchronized void commit(long toIndex) {
-        toIndex = Math.min(log.getLastIndex(),toIndex);
-        int length = (int) (toIndex-lastCommitIndex);
-        if(length > 0) {
-            long[] logIndex = LongStream.range(lastCommitIndex + 1, toIndex+1).toArray();
-            Entry[] entries = log.get(logIndex);
-            stateMachine.commit(entries);
-            lastCommitIndex = toIndex;
-        }
+        long[] logIndex = LongStream.range(lastCommitIndex + 1, toIndex+1).toArray();
+        Entry[] entries = log.get(logIndex);
+        stateMachine.commit(entries);
+        lastCommitIndex = toIndex;
+
     }
 
     public String get(String key) {
@@ -95,10 +92,11 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
             log.append(entry0);
         }
         int committedIndex0 = request.getCommittedIndex();
+        committedIndex0 = (int) Math.min(committedIndex0, log.getLastIndex());
         if(committedIndex0>lastCommitIndex) {
             commit(committedIndex0);
+            lastCommitIndex = committedIndex0;
         }
-        lastCommitIndex = committedIndex0;
         responseBuilder.setTerm(term)
                 .setSuccess(true);
         responseObserver.onNext(responseBuilder.build());

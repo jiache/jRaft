@@ -1,6 +1,13 @@
 package io.jiache.core;
 
+import io.jiache.common.Address;
+import io.jiache.common.RaftConf;
+
 public class OffloadLocalCluster implements LocalCluster {
+    public OffloadLocalCluster(Address local, RaftConf raftConf) {
+
+    }
+
     @Override
     public void start() {
 

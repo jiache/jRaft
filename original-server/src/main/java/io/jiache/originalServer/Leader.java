@@ -30,20 +30,7 @@ public class Leader extends BaseServer{
             }
             blockingStubList.add(blockingStub);
         }
-        // 扫描nextIndex, 执行commit
-        Thread commitThread = new Thread(() -> {
-            Long[] sortedNextIndex;
-            for(;;) {
-                sortedNextIndex = Arrays.copyOfRange(nextIndex, 0, nextIndex.length);
-                Arrays.sort(sortedNextIndex);
-                long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2+1]-1;
-                if(newCommitIndex > lastCommitIndex) {
-                    commit(newCommitIndex);
-                    lastCommitIndex = newCommitIndex;
-                }
-            }
-        });
-        executorService.submit(commitThread);
+        executorService.submit(this::matainCommit);
     }
 
     // put操作 只有leader有 不需要logMatch
@@ -57,6 +44,20 @@ public class Leader extends BaseServer{
 
     public void put(Entry[] entries) {
         log.append(entries);
+    }
+
+    private void matainCommit() {
+        // 扫描nextIndex, 执行commit
+        Long[] sortedNextIndex;
+        for(;;) {
+            sortedNextIndex = Arrays.copyOfRange(nextIndex, 0, nextIndex.length);
+            Arrays.sort(sortedNextIndex);
+            long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2+1]-1;
+            if(newCommitIndex > lastCommitIndex) {
+                commit(newCommitIndex);
+                lastCommitIndex = newCommitIndex;
+            }
+        }
     }
 
     @Override

@@ -48,8 +48,8 @@ public class Session {
                     .setKey(key)
                     .setToken(token)
                     .build();
-            GetResponse responce = sessionServiceBlockingStub.get(request);
-            return responce.getSuccess()?responce.getValue():null;
+            GetResponse response = sessionServiceBlockingStub.get(request);
+            return response.getSuccess()?response.getValue():null;
         });
     }
 

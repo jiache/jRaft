@@ -9,11 +9,12 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
+import java.util.stream.IntStream;
 import java.util.stream.LongStream;
 
 public class LogTest {
     @Test
-    public void mainTest() throws RocksDBException {
+    public void defaultLogTest() throws RocksDBException {
         Log log = DefaultLog.newInstance("testLog");
         log.append(new Entry("key1", "value1", 20));
         List<Entry> entries = new ArrayList<>();
@@ -60,6 +61,20 @@ public class LogTest {
             String s = new String(db.get((""+i).getBytes()));
             System.out.println(s);
         }
+    }
+
+    @Test
+    public void memoryLogTest() {
+        Log log = new MemoryLog();
+        List<Entry> entries = new ArrayList<>();
+        int n = 10;
+        for(int i=0; i<n; ++i) {
+            entries.add(new Entry("Key"+i, "Value"+i, 0));
+        }
+        Entry[] entryArr = new Entry[entries.size()];
+        log.append(entries.toArray(entryArr));
+        Entry[] res = log.get(LongStream.range(0, n).toArray());
+        Arrays.stream(res).forEach(System.out::println);
     }
 
 }

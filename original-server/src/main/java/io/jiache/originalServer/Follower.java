@@ -10,6 +10,5 @@ public class Follower extends BaseServer{
 
     @Override
     public void run() {
-
     }
 }

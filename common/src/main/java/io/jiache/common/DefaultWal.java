@@ -73,7 +73,7 @@ public class DefaultWal implements Wal {
         Entry[] entries = new Entry[index.length];
         try {
             for(int i=0; i<index.length; ++i) {
-                entries[i] = Serializer.deSerialize(rocksDB.get(ByteUtils.longToBytes(i)), Entry.class);
+                entries[i] = Serializer.deSerialize(rocksDB.get(ByteUtils.longToBytes(i+index[0])), Entry.class);
             }
         } catch (RocksDBException e) {
             e.printStackTrace();
@@ -93,8 +93,8 @@ public class DefaultWal implements Wal {
     @Override
     public void delete(long[] index) {
         try {
-            for(int i=0; i<index.length; ++i) {
-                rocksDB.delete(ByteUtils.longToBytes(index[i]));
+            for(int i = 0; i<index.length; ++i) {
+                rocksDB.delete(ByteUtils.longToBytes(index[0]+i));
             }
         } catch (RocksDBException e) {
             e.printStackTrace();
