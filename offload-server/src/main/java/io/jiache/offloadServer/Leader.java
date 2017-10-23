@@ -43,7 +43,6 @@ public class Leader extends BaseServer {
                     .build();
             secretaryStubList.add(ServerServiceGrpc.newBlockingStub(managedChannel));
         });
-        executorService.submit(this::matainCommit);
 
     }
 
@@ -79,7 +78,6 @@ public class Leader extends BaseServer {
             AppendEntriesResponse response;
             AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
                     .setTerm(term)
-                    .setCommittedIndex((int) lastCommitIndex)
                     .setPreLogIndex((int) (i - 1))
                     .setEntry(new String(Serializer.serialize(log.get(i))))
                     .build();
@@ -89,6 +87,7 @@ public class Leader extends BaseServer {
                 return false;
             }
         }
+        secretaryNextIndex[secretaryIndex] = lastIndex+1;
         return true;
     }
 
@@ -139,6 +138,8 @@ public class Leader extends BaseServer {
 
     @Override
     public void run() {
+        // commit entries
+        executorService.submit(this::matainCommit);
         // send appendEntry message to secretaries
         executorService.submit(this::appendEntriesToSecretaries);
         // send callBack message to followers

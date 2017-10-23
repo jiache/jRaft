@@ -10,7 +10,6 @@ import io.jiache.grpc.offload.*;
 import io.jiache.util.Serializer;
 
 public class Follower extends BaseServer{
-    private ServerServiceGrpc.ServerServiceBlockingStub leaderBlockingStub;
 
     public Follower(RaftConf raftConf, int thisIndex) {
         super(raftConf, thisIndex);

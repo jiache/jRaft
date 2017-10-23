@@ -30,7 +30,6 @@ public class Leader extends BaseServer{
             }
             blockingStubList.add(blockingStub);
         }
-        executorService.submit(this::matainCommit);
     }
 
     // put操作 只有leader有 不需要logMatch
@@ -53,6 +52,7 @@ public class Leader extends BaseServer{
             sortedNextIndex = Arrays.copyOfRange(nextIndex, 0, nextIndex.length);
             Arrays.sort(sortedNextIndex);
             long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2+1]-1;
+
             if(newCommitIndex > lastCommitIndex) {
                 commit(newCommitIndex);
                 lastCommitIndex = newCommitIndex;
@@ -62,6 +62,7 @@ public class Leader extends BaseServer{
 
     @Override
     public void run() {
+        executorService.submit(this::matainCommit);
         List<Address> addresses = raftConf.getAddressList();
         for(;;) {
             for (int i = 0; i < addresses.size(); ++i) {

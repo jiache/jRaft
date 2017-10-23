@@ -20,9 +20,10 @@ public class Client {
         sessionList.forEach(session -> session.createCluster(raftConf));
     }
 
-    public CompletableFuture<Boolean> put(String token, String key, String value) {
-        Session session = sessionList.get(Random.randomInt(sessionList.size()));
-        return session.put(token, key, value);
+    public void put(String token, String key, String value) {
+        for(int i=0; i<sessionList.size(); ++i) {
+            sessionList.get(i).put(token, key, value);
+        }
     }
 
     public CompletableFuture<String> get(String token, String key) {

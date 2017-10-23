@@ -11,7 +11,7 @@ public class MemoryLog implements Log{
     private AtomicLong lastIndex;
 
     public MemoryLog() {
-        this(0);
+        this(-1);
     }
 
     public MemoryLog(long baseLastIndex) {
@@ -21,7 +21,10 @@ public class MemoryLog implements Log{
 
     @Override
     public long getLastTerm() {
-        return wal.get(wal.size()-1).getTerm();
+        if(wal.size()>0) {
+            return wal.get(wal.size() - 1).getTerm();
+        }
+        return 0;
     }
 
     @Override

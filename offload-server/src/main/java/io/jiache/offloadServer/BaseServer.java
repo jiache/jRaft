@@ -65,7 +65,7 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     }
 
     @Override
-    public void appendEntries(AppendEntriesRequest request, StreamObserver<AppendEntriesResponse> responseObserver) {
+    public synchronized void appendEntries(AppendEntriesRequest request, StreamObserver<AppendEntriesResponse> responseObserver) {
         int term0 = request.getTerm();
         AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder();
         if(term0<term) {
@@ -86,14 +86,7 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
             responseObserver.onCompleted();
             return;
         }
-        if(entry0.getKey() != null) {
-            log.append(entry0);
-        }
-        int committedIndex0 = request.getCommittedIndex();
-        if(committedIndex0>lastCommitIndex && committedIndex0<=log.getLastIndex()) {
-            commit(committedIndex0);
-        }
-        lastCommitIndex = committedIndex0;
+        log.append(entry0);
         responseBuilder.setTerm(term)
                 .setSuccess(true);
         responseObserver.onNext(responseBuilder.build());

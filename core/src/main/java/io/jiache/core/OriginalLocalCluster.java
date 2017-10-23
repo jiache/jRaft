@@ -21,7 +21,6 @@ public class OriginalLocalCluster implements LocalCluster{
     public OriginalLocalCluster(Address localAddress, RaftConf raftConf) {
         cluster = new ArrayList<>();
         List<Address> addresses = raftConf.getAddressList();
-        int leaderIndex = raftConf.getLeaderIndex();
         for(int i=0; i<addresses.size(); ++i) {
             Address address = addresses.get(i);
             if(address.getHost().equals(localAddress.getHost())) {

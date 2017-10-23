@@ -4,6 +4,8 @@ import java.net.UnknownHostException;
 import java.util.Arrays;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.LongStream;
 
 public class SomeTest {
@@ -13,7 +15,8 @@ public class SomeTest {
     }
 
     public static void main(String[] args) throws InterruptedException, TimeoutException, ExecutionException, UnknownHostException {
-        long[] array = LongStream.range(10 + 1, 10+11).toArray();
-        Arrays.stream(array).forEach(System.out::println);
+        AtomicInteger a = new AtomicInteger(0);
+        System.out.println(a.incrementAndGet());
+        System.out.println(a.incrementAndGet());
     }
 }

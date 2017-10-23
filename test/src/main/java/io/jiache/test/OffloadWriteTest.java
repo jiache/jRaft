@@ -1,6 +1,5 @@
 package io.jiache.test;
 
-
 import io.jiache.client.Client;
 import io.jiache.common.Address;
 import io.jiache.core.MainServer;
@@ -8,11 +7,10 @@ import io.jiache.core.Session;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-public class OriginalTest {
+public class OffloadWriteTest {
+    private final static int benchMarkSize = 2000;
     public static void main(String[] args) throws InterruptedException {
         new Thread(()-> MainServer.main(new String[]{"--host=127.0.0.1", "--port=8081"})).start();
         TimeUnit.SECONDS.sleep(1);
@@ -25,39 +23,29 @@ public class OriginalTest {
         serverAddresses.add(new Address("127.0.0.1", 9902));
         serverAddresses.add(new Address("127.0.0.1", 9903));
         serverAddresses.add(new Address("127.0.0.1", 9904));
-        Client client = new Client(sessions);
-        client.newRaftCluster("raft0", serverAddresses,3,null);
 
-        for(int i=0; i<1000; ++i) {
+        List<Address> secretaryAddresses = new ArrayList<>();
+        secretaryAddresses.add(new Address("127.0.0.1", 9905));
+        Client client = new Client(sessions);
+        client.newRaftCluster("raft0", serverAddresses,3,secretaryAddresses);
+
+        long begin = System.currentTimeMillis();
+        for(int i=0; i<benchMarkSize; ++i) {
             String key = "myKey"+i;
             String value = "myValue"+i;
             client.put("raft0", key, value);
         }
-
-        List<Future<String>> futureList = new ArrayList<>();
-        for(int i=0; i<1000; ++i) {
+        for(int i=0; i<benchMarkSize-10; ++i) {
             String key = "myKey"+i;
-            futureList.add(client.get("raft0",key));
-        }
-        futureList.forEach(stringFuture -> {
-            try {
-                System.out.println(stringFuture.get());
-            } catch (InterruptedException | ExecutionException e) {
-                e.printStackTrace();
-            }
-        });
-
-        futureList.clear();
-        for(int i=0; i<1000; ++i) {
-            String key = "myKey"+i;
-            for(;;) {
-                String value = client.get("raft0", key).join();
-                if(value != null) {
-                    System.out.println(value);
-                    break;
-                }
+            String value = null;
+            while(value == null) {
+                value = client.get("raft0", key).join();
+//                if(value!=null) {
+//                    System.out.println(value);
+//                }
             }
         }
-
+        long end = System.currentTimeMillis();
+        System.out.printf("offload throughput = %f \n",(benchMarkSize*1e3/(end-begin)));
     }
 }

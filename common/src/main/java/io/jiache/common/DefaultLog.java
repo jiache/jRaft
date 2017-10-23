@@ -22,6 +22,8 @@ public class DefaultLog implements Log{
     }
 
     public DefaultLog(String walPath) throws RocksDBException {
+        lastIndex = -1;
+        lastTerm = -1;
         Wal wal = new DefaultWal(walPath);
         this.wal = wal;
         updateFromWal();

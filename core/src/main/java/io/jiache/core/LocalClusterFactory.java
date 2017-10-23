@@ -2,6 +2,7 @@ package io.jiache.core;
 
 import io.jiache.common.Address;
 import io.jiache.common.RaftConf;
+import io.jiache.util.Serializer;
 
 public class LocalClusterFactory {
     public static LocalCluster createLocalCluster(Address local, RaftConf raftConf) {
