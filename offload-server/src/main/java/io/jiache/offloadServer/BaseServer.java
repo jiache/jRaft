@@ -9,9 +9,12 @@ import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.LongStream;
@@ -24,8 +27,8 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     protected ExecutorService executorService;
     protected RaftConf raftConf;
     protected Integer thisIndex;
-    protected Long[] nextIndex;
-    protected Lock[] raftLocks;
+    protected volatile Long[] nextIndex;
+    protected volatile Lock[] raftLocks;
 
     protected BaseServer(RaftConf raftConf, int thisIndex) {
         try {
@@ -49,8 +52,10 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
             this.raftConf = raftConf;
             this.thisIndex = thisIndex;
             nextIndex = new Long[raftConf.getAddressList().size()];
-            Arrays.fill(nextIndex, 0L);
-            raftLocks = new ReentrantLock[nextIndex.length];
+            for(int i=0; i<raftConf.getAddressList().size(); ++i) {
+                nextIndex[i] = 0L;
+            }
+            raftLocks = new ReentrantLock[raftConf.getAddressList().size()];
             for(int i=0; i<raftLocks.length; ++i) {
                 raftLocks[i] = new ReentrantLock();
             }
@@ -60,7 +65,6 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     }
 
     public synchronized void commit(long toIndex) {
-
         long[] logIndex = LongStream.range(lastCommitIndex + 1, toIndex + 1).toArray();
         Entry[] entries = log.get(logIndex);
         stateMachine.commit(entries);

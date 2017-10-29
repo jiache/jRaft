@@ -16,10 +16,12 @@ import java.util.concurrent.Executors;
 public class OriginalLocalCluster implements LocalCluster{
     private List<Server> cluster;
     private ExecutorService executorService;
+    private Integer leaderIndex;
     private boolean running;
 
     public OriginalLocalCluster(Address localAddress, RaftConf raftConf) {
         cluster = new ArrayList<>();
+        leaderIndex = -1;
         List<Address> addresses = raftConf.getAddressList();
         for(int i=0; i<addresses.size(); ++i) {
             Address address = addresses.get(i);
@@ -28,6 +30,7 @@ public class OriginalLocalCluster implements LocalCluster{
                     cluster.add(new Follower(raftConf, i));
                 } else {
                     cluster.add(new Leader(raftConf, i));
+                    leaderIndex = cluster.size()-1;
                 }
             }
         }
@@ -38,7 +41,9 @@ public class OriginalLocalCluster implements LocalCluster{
     @Override
     public void start() {
         if(!running) {
-            cluster.forEach(server -> executorService.submit(server));
+            for(Server server : cluster) {
+                executorService.submit(server);
+            }
             running = true;
         }
     }
@@ -55,12 +60,8 @@ public class OriginalLocalCluster implements LocalCluster{
 
     @Override
     public void put(String key, String value) {
-        if(running) {
-            cluster.forEach(server -> {
-                if(server instanceof Leader) {
-                    ((Leader) server).put(key, value);
-                }
-            });
+        if(leaderIndex>-1 && running) {
+            ((Leader)cluster.get(leaderIndex)).put(key, value);
         }
     }
 

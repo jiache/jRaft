@@ -18,9 +18,11 @@ public class OffloadLocalCluster implements LocalCluster {
     private List<Server> cluster;
     private List<Server> secretaries;
     private ExecutorService executorService;
+    private Integer leaderIndex;
     private boolean running;
 
     public OffloadLocalCluster(Address localAddress, RaftConf raftConf) {
+        leaderIndex = -1;
         cluster = new ArrayList<>();
         secretaries = new ArrayList<>();
         List<Address> addresses = raftConf.getAddressList();
@@ -31,6 +33,7 @@ public class OffloadLocalCluster implements LocalCluster {
                     cluster.add(new Follower(raftConf, i));
                 } else {
                     cluster.add(new Leader(raftConf, i));
+                    leaderIndex = cluster.size()-1;
                 }
             }
         }
@@ -48,8 +51,12 @@ public class OffloadLocalCluster implements LocalCluster {
     @Override
     public void start() {
         if(!running) {
-            cluster.forEach(server -> executorService.submit(server));
-            secretaries.forEach(server -> executorService.submit(server));
+            for(Server server : cluster) {
+                executorService.submit(server);
+            }
+            for(Server server : secretaries) {
+                executorService.submit(server);
+            }
             running = true;
         }
     }
@@ -67,12 +74,8 @@ public class OffloadLocalCluster implements LocalCluster {
 
     @Override
     public void put(String key, String value) {
-        if(running) {
-            cluster.forEach(server -> {
-                if(server instanceof Leader) {
-                    ((Leader) server).put(key, value);
-                }
-            });
+        if(leaderIndex>-1 && running) {
+            ((Leader)cluster.get(leaderIndex)).put(key, value);
         }
     }
 

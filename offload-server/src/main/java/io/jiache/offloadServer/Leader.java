@@ -11,14 +11,16 @@ import io.jiache.util.Serializer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class Leader extends BaseServer {
     private List<ServerServiceGrpc.ServerServiceBlockingStub> raftStubList;
     private List<ServerServiceGrpc.ServerServiceBlockingStub> secretaryStubList;
-    private Long[] secretaryNextIndex;
-    private Lock[] secretaryLocks;
+    private volatile Long[] secretaryNextIndex;
+    private volatile Lock[] secretaryLocks;
 
     public Leader(RaftConf raftConf, int thisIndex) {
         super(raftConf, thisIndex);
@@ -27,8 +29,10 @@ public class Leader extends BaseServer {
         List<Address> raftAddresses = raftConf.getAddressList();
         List<Address> secretaryAddresses = raftConf.getSecretaryAddressList();
         secretaryNextIndex = new Long[secretaryAddresses.size()];
-        Arrays.fill(secretaryNextIndex, 0L);
-        secretaryLocks = new ReentrantLock[secretaryNextIndex.length];
+        for(int i=0; i<secretaryAddresses.size(); ++i) {
+            secretaryNextIndex[i] = 0L;
+        }
+        secretaryLocks = new ReentrantLock[secretaryAddresses.size()];
         for(int i = 0; i<secretaryLocks.length; ++i) {
             secretaryLocks[i] = new ReentrantLock();
         }
@@ -59,13 +63,13 @@ public class Leader extends BaseServer {
 
     public void put(Entry entry) {
         long index = log.append(entry);
-        while(lastCommitIndex<index) {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+//        while(lastCommitIndex<index) {
+//            try {
+//                Thread.sleep(1);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
     }
 
     public void put(Entry[] entries) {
@@ -74,9 +78,11 @@ public class Leader extends BaseServer {
 
     private void matainCommit() {
         // 扫描nextIndex, 执行commit
-        Long[] sortedNextIndex;
+        Long[] sortedNextIndex = new Long[nextIndex.length];
         for(;;) {
-            sortedNextIndex = Arrays.copyOfRange(nextIndex, 0, nextIndex.length);
+            for(int i=0; i<sortedNextIndex.length; ++i) {
+                sortedNextIndex[i] = nextIndex[i];
+            }
             Arrays.sort(sortedNextIndex);
             long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2+1]-1;
             if(newCommitIndex > lastCommitIndex) {
@@ -100,11 +106,13 @@ public class Leader extends BaseServer {
                 response = secretaryStubList.get(secretaryIndex)
                         .appendEntries(request);
                 if (!response.getSuccess()) {
+                    System.out.println("leader 109 unsuccess");
+                    secretaryNextIndex[secretaryIndex] =  i;
                     secretaryLocks[secretaryIndex].unlock();
                     return;
                 }
             }
-            secretaryNextIndex[secretaryIndex] = lastIndex + 1;
+            secretaryNextIndex[secretaryIndex] =  (lastIndex + 1);
             secretaryLocks[secretaryIndex].unlock();
         }
     }

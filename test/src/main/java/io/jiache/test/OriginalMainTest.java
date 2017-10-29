@@ -12,12 +12,12 @@ public class OriginalMainTest {
                 ClientMain.main(new String[]{
                         "--connect=127.0.0.1:8081",
                         "--blockSize=256",
-                        "--benchmarkSize=3000",
+                        "--benchmarkSize=1000",
                         "--token=token0",
-                        "--create=127.0.0.1:9000,127.0.0.1:9001,127.0.0.1:9002,127.0.0.1:9003,127.0.0.1:9004,127.0.0.1:9005",
+                        "--create=127.0.0.1:9000,127.0.0.1:9001,127.0.0.1:9002,127.0.0.1:9003,127.0.0.1:9004",
                         "--leaderIndex=2",
 //                        "--secretary=host1:port1",
-                        "--testStrategy=A"
+                        "--testStrategy=AllRead"
                 });
             } catch (ClassNotFoundException | IllegalAccessException | InstantiationException e) {
                 e.printStackTrace();

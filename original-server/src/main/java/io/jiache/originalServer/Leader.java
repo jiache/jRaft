@@ -39,13 +39,13 @@ public class Leader extends BaseServer{
 
     public void put(Entry entry) {
         long index = log.append(entry);
-        while(lastCommitIndex<index) {
-            try {
-                Thread.sleep(1);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
+//        while(lastCommitIndex<index) {
+//            try {
+//                Thread.sleep(1);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
     }
 
     public void put(Entry[] entries) {

@@ -27,10 +27,11 @@ public class Client {
             for (int i = 0; i < sessionList.size(); ++i) {
                 futureList.add(sessionList.get(i).put(token, key, value));
             }
-            return futureList.parallelStream()
-                    .map(CompletableFuture::join)
-                    .reduce(((r1, r2) -> r1 && r2))
-                    .get();
+            boolean res = true;
+            for(CompletableFuture<Boolean> future : futureList) {
+                res = res&&future.join();
+            }
+            return res;
         });
     }
 

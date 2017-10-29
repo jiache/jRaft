@@ -70,8 +70,7 @@ public class DefaultLog implements Log{
     }
 
     @Override
-    public long append(Entry entry) {
-        setLastTerm(entry.getTerm());
+    public synchronized long append(Entry entry) {
         long index = lastIndex.incrementAndGet();
         wal.put(index, entry);
         wal.setLastIndex(index);

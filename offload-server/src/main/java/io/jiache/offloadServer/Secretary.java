@@ -7,11 +7,14 @@ import io.grpc.stub.StreamObserver;
 import io.jiache.common.*;
 import io.jiache.grpc.offload.*;
 import io.jiache.util.Serializer;
+import org.rocksdb.RocksDBException;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.locks.Lock;
@@ -23,19 +26,26 @@ public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implement
     private ExecutorService executorService;
     private RaftConf raftConf;
     private int thisIndex;
-    private Long[] nextIndex;
-    private Lock[] raftLocks;
+    private volatile Long[] nextIndex;
+    private volatile Lock[] raftLocks;
     private List<ServerServiceGrpc.ServerServiceBlockingStub> raftStubList;
 
     public Secretary(RaftConf raftConf, int thisIndex) {
         this.raftConf = raftConf;
         this.thisIndex = thisIndex;
         term = 0;
-        log = new MemoryLog();
+//        log = new MemoryLog();
+        try {
+            log = new DefaultLog(raftConf.getToken()+"-"+ UUID.randomUUID().toString());
+        } catch (RocksDBException e) {
+            e.printStackTrace();
+        }
         executorService = Executors.newCachedThreadPool();
         nextIndex = new Long[raftConf.getAddressList().size()];
-        Arrays.fill(nextIndex, 0L);
-        raftLocks = new ReentrantLock[nextIndex.length];
+        for(int i=0; i<raftConf.getAddressList().size(); ++i) {
+            nextIndex[i] = 0L;
+        }
+        raftLocks = new ReentrantLock[raftConf.getAddressList().size()];
         for(int i=0; i<raftLocks.length; ++i) {
             raftLocks[i] = new ReentrantLock();
         }
@@ -83,6 +93,7 @@ public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implement
             responseObserver.onNext(response);
             responseObserver.onCompleted();
         } else if(term0 > term) { // TODO detect a new leader
+            System.out.println("secretary 86 term not match");
             term = (int) term0;
             AppendEntriesResponse response = responseBuilder
                     .setSuccess(false)
@@ -112,7 +123,7 @@ public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implement
                 AppendEntriesResponse response = raftStubList.get(followerIndex)
                         .appendEntries(request);
                 if (!response.getSuccess()) {
-//                    nextIndex[followerIndex] = i + 1;
+                    nextIndex[followerIndex] = i ;
                     raftLocks[followerIndex].unlock();
                     return;
                 }

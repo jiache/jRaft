@@ -34,11 +34,16 @@ public class ServerManager {
 
     public void put(String token, String key, String value) {
         LocalCluster localCluster = tokenAndLocalCluster.get(token);
-        localCluster.put(key, value);
+        if(localCluster != null) {
+            localCluster.put(key, value);
+        }
     }
 
     public String get(String token, String key) {
         LocalCluster localCluster = tokenAndLocalCluster.get(token);
+        if(localCluster == null) {
+            return null;
+        }
         return localCluster.get(key);
     }
 
