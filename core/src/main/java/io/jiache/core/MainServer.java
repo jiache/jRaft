@@ -14,6 +14,7 @@ public class MainServer {
         String host = map.get("host");
         String portS = map.get("port");
         if(host==null || portS==null) {
+            System.out.println("please input --host= --port=");
             System.exit(-1);
         }
         ServerManager serverManager = new ServerManager(host, Integer.parseInt(portS));

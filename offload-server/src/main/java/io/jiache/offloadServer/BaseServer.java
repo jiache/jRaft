@@ -12,22 +12,25 @@ import java.util.Arrays;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.LongStream;
 
 abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase implements Server {
-    protected int term;
-    protected long lastCommitIndex;
+    protected Integer term;
+    protected volatile Long lastCommitIndex;
     protected Log log;
     protected StateMachine stateMachine;
     protected ExecutorService executorService;
     protected RaftConf raftConf;
-    protected int thisIndex;
+    protected Integer thisIndex;
     protected Long[] nextIndex;
+    protected Lock[] raftLocks;
 
     protected BaseServer(RaftConf raftConf, int thisIndex) {
         try {
             term = 0;
-            lastCommitIndex = -1;
+            lastCommitIndex = -1L;
             log = new DefaultLog(raftConf.getToken()+"-"+ UUID.randomUUID().toString());
             stateMachine = new DefaultStateMachine();
             executorService = Executors.newCachedThreadPool();
@@ -47,12 +50,17 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
             this.thisIndex = thisIndex;
             nextIndex = new Long[raftConf.getAddressList().size()];
             Arrays.fill(nextIndex, 0L);
+            raftLocks = new ReentrantLock[nextIndex.length];
+            for(int i=0; i<raftLocks.length; ++i) {
+                raftLocks[i] = new ReentrantLock();
+            }
         } catch (RocksDBException e) {
             e.printStackTrace();
         }
     }
 
     public synchronized void commit(long toIndex) {
+
         long[] logIndex = LongStream.range(lastCommitIndex + 1, toIndex + 1).toArray();
         Entry[] entries = log.get(logIndex);
         stateMachine.commit(entries);
@@ -65,7 +73,7 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     }
 
     @Override
-    public synchronized void appendEntries(AppendEntriesRequest request, StreamObserver<AppendEntriesResponse> responseObserver) {
+    public void appendEntries(AppendEntriesRequest request, StreamObserver<AppendEntriesResponse> responseObserver) {
         int term0 = request.getTerm();
         AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder();
         if(term0<term) {
@@ -79,7 +87,7 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
         term = term0;
         int preLogIndex0 = request.getPreLogIndex();
         Entry entry0 = Serializer.deSerialize(request.getEntry().getBytes(), Entry.class);
-        if(!log.match(entry0.getTerm(),preLogIndex0)) {
+        if(!log.match(entry0.getTerm(), preLogIndex0)) {
             responseBuilder.setSuccess(false)
                     .setTerm(term);
             responseObserver.onNext(responseBuilder.build());
@@ -108,7 +116,6 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
             long lastCommitIndex0 = request.getLatestCommitIndex();
             lastCommitIndex0 = Math.min(lastCommitIndex0, log.getLastIndex());
             if(lastCommitIndex0>lastCommitIndex) {
-                lastCommitIndex = lastCommitIndex0;
                 commit(lastCommitIndex0);
             }
             return;

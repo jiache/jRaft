@@ -34,8 +34,7 @@ public class MemoryLog implements Log{
 
     @Override
     public Entry get(long index) {
-        int last = (int) (lastIndex.get() - index);
-        return wal.get(wal.size()-last);
+        return wal.get((int) index);
     }
 
     @Override
@@ -48,9 +47,9 @@ public class MemoryLog implements Log{
     }
 
     @Override
-    public void append(Entry entry) {
+    public long append(Entry entry) {
         wal.add(entry);
-        lastIndex.incrementAndGet();
+        return lastIndex.incrementAndGet();
     }
 
     @Override

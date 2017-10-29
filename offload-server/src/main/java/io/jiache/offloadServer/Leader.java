@@ -11,11 +11,14 @@ import io.jiache.util.Serializer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Leader extends BaseServer {
     private List<ServerServiceGrpc.ServerServiceBlockingStub> raftStubList;
     private List<ServerServiceGrpc.ServerServiceBlockingStub> secretaryStubList;
-    private long[] secretaryNextIndex;
+    private Long[] secretaryNextIndex;
+    private Lock[] secretaryLocks;
 
     public Leader(RaftConf raftConf, int thisIndex) {
         super(raftConf, thisIndex);
@@ -23,8 +26,12 @@ public class Leader extends BaseServer {
         secretaryStubList = new ArrayList<>();
         List<Address> raftAddresses = raftConf.getAddressList();
         List<Address> secretaryAddresses = raftConf.getSecretaryAddressList();
-        secretaryNextIndex = new long[secretaryAddresses.size()];
-        Arrays.fill(secretaryNextIndex, 0);
+        secretaryNextIndex = new Long[secretaryAddresses.size()];
+        Arrays.fill(secretaryNextIndex, 0L);
+        secretaryLocks = new ReentrantLock[secretaryNextIndex.length];
+        for(int i = 0; i<secretaryLocks.length; ++i) {
+            secretaryLocks[i] = new ReentrantLock();
+        }
         for(int i=0; i<raftAddresses.size(); ++i) {
             ServerServiceGrpc.ServerServiceBlockingStub blockingStub = null;
             if(i!=thisIndex) {
@@ -51,7 +58,14 @@ public class Leader extends BaseServer {
     }
 
     public void put(Entry entry) {
-        log.append(entry);
+        long index = log.append(entry);
+        while(lastCommitIndex<index) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void put(Entry[] entries) {
@@ -67,28 +81,32 @@ public class Leader extends BaseServer {
             long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2+1]-1;
             if(newCommitIndex > lastCommitIndex) {
                 commit(newCommitIndex);
-                lastCommitIndex = newCommitIndex;
             }
+            Thread.interrupted();
         }
+
     }
 
-    private boolean appendEntryToSecretary(int secretaryIndex) {
-        long lastIndex = log.getLastIndex();
-        for(long i=secretaryNextIndex[secretaryIndex]; i<=lastIndex; ++i) {
-            AppendEntriesResponse response;
-            AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
-                    .setTerm(term)
-                    .setPreLogIndex((int) (i - 1))
-                    .setEntry(new String(Serializer.serialize(log.get(i))))
-                    .build();
-            response = secretaryStubList.get(secretaryIndex)
-                    .appendEntries(request);
-            if(!response.getSuccess()) {
-                return false;
+    private void appendEntryToSecretary(int secretaryIndex) {
+        if(secretaryLocks[secretaryIndex].tryLock()) {
+            long lastIndex = log.getLastIndex();
+            for (long i = secretaryNextIndex[secretaryIndex]; i <= lastIndex; ++i) {
+                AppendEntriesResponse response;
+                AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
+                        .setTerm(term)
+                        .setPreLogIndex((int) (i - 1))
+                        .setEntry(new String(Serializer.serialize(log.get(i))))
+                        .build();
+                response = secretaryStubList.get(secretaryIndex)
+                        .appendEntries(request);
+                if (!response.getSuccess()) {
+                    secretaryLocks[secretaryIndex].unlock();
+                    return;
+                }
             }
+            secretaryNextIndex[secretaryIndex] = lastIndex + 1;
+            secretaryLocks[secretaryIndex].unlock();
         }
-        secretaryNextIndex[secretaryIndex] = lastIndex+1;
-        return true;
     }
 
     private void appendEntriesToSecretaries() {
@@ -106,20 +124,22 @@ public class Leader extends BaseServer {
     }
 
     private void callBackToFollower(int followerIndex) {
-        CallBackRequest request = CallBackRequest.newBuilder()
-                .setTerm(term)
-                .setServerIndex(thisIndex)
-                .setLatestCommitIndex((int) lastCommitIndex)
-                .build();
-        CallBackResponse response = raftStubList.get(followerIndex)
-                .callBack(request);
-        if(response.getSuccess()) {
-            long replicatedIndex0 = response.getReplicatedIndex();
-            if(nextIndex[followerIndex] < replicatedIndex0) {
-                nextIndex[followerIndex] = replicatedIndex0;
+        if(raftLocks[followerIndex].tryLock()) {
+            CallBackRequest request = CallBackRequest.newBuilder()
+                    .setTerm(term)
+                    .setServerIndex(thisIndex)
+                    .setLatestCommitIndex(lastCommitIndex.intValue())
+                    .build();
+            CallBackResponse response = raftStubList.get(followerIndex)
+                    .callBack(request);
+            if (response.getSuccess()) {
+                long replicatedIndex0 = response.getReplicatedIndex();
+                if (nextIndex[followerIndex] <= replicatedIndex0) {
+                    nextIndex[followerIndex] = replicatedIndex0+1;
+                }
             }
+            raftLocks[followerIndex].unlock();
         }
-
     }
 
     private void callBackToFollowers() {

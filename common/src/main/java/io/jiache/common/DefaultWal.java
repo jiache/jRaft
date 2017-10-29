@@ -73,6 +73,10 @@ public class DefaultWal implements Wal {
         Entry[] entries = new Entry[index.length];
         try {
             for(int i=0; i<index.length; ++i) {
+                byte[] bytes = null;
+                while (bytes == null) {
+                    bytes = rocksDB.get(ByteUtils.longToBytes(i + index[0]));
+                }
                 entries[i] = Serializer.deSerialize(rocksDB.get(ByteUtils.longToBytes(i+index[0])), Entry.class);
             }
         } catch (RocksDBException e) {

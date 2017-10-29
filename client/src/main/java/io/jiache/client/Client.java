@@ -5,6 +5,7 @@ import io.jiache.common.RaftConf;
 import io.jiache.core.Session;
 import io.jiache.util.Random;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
@@ -20,10 +21,17 @@ public class Client {
         sessionList.forEach(session -> session.createCluster(raftConf));
     }
 
-    public void put(String token, String key, String value) {
-        for(int i=0; i<sessionList.size(); ++i) {
-            sessionList.get(i).put(token, key, value);
-        }
+    public CompletableFuture<Boolean> put(String token, String key, String value) {
+        return CompletableFuture.supplyAsync(()-> {
+            List<CompletableFuture<Boolean>> futureList = new ArrayList<>();
+            for (int i = 0; i < sessionList.size(); ++i) {
+                futureList.add(sessionList.get(i).put(token, key, value));
+            }
+            return futureList.parallelStream()
+                    .map(CompletableFuture::join)
+                    .reduce(((r1, r2) -> r1 && r2))
+                    .get();
+        });
     }
 
     public CompletableFuture<String> get(String token, String key) {

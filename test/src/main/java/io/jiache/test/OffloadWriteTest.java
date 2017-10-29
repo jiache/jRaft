@@ -13,7 +13,6 @@ public class OffloadWriteTest {
     private final static int benchMarkSize = 2000;
     public static void main(String[] args) throws InterruptedException {
         new Thread(()-> MainServer.main(new String[]{"--host=127.0.0.1", "--port=8081"})).start();
-        TimeUnit.SECONDS.sleep(1);
 
         List<Session> sessions = new ArrayList<>();
         sessions.add(new Session("127.0.0.1", 8081));
@@ -33,16 +32,18 @@ public class OffloadWriteTest {
         for(int i=0; i<benchMarkSize; ++i) {
             String key = "myKey"+i;
             String value = "myValue"+i;
-            client.put("raft0", key, value);
+            client.put("raft0", key, value).thenRun(()->System.out.println("put "+key));
         }
-        for(int i=0; i<benchMarkSize-10; ++i) {
+
+        for(int i=0; i<benchMarkSize; ++i) {
             String key = "myKey"+i;
             String value = null;
             while(value == null) {
                 value = client.get("raft0", key).join();
-//                if(value!=null) {
-//                    System.out.println(value);
-//                }
+                if(value!=null) {
+                    System.out.println(value);
+                }
+                Thread.interrupted();
             }
         }
         long end = System.currentTimeMillis();

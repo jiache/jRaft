@@ -80,9 +80,7 @@ public class OffloadLocalCluster implements LocalCluster {
     public String get(String key) {
         if(running) {
             Server server = cluster.get(Random.randomInt(cluster.size()));
-            if(server instanceof BaseServer) {
-                return ((BaseServer) server).get(key);
-            }
+            return ((BaseServer) server).get(key);
         }
         return null;
     }

@@ -3,29 +3,28 @@ package io.jiache.common;
 import io.jiache.util.Assert;
 import org.rocksdb.RocksDBException;
 
+import java.util.Arrays;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.LongStream;
 
 /**
  * Created by jiacheng on 17-9-24.
  */
 public class DefaultLog implements Log{
-    private volatile Wal wal;
-    private volatile long lastIndex;
-    private volatile long lastTerm;
+    private Wal wal;
+    private AtomicLong lastIndex;
+    private AtomicLong lastTerm;
 
     private void updateFromWal() {
-        this.lastIndex = wal.getLastIndex();
-        this.lastTerm = wal.getLastTerm();
+        this.lastIndex = new AtomicLong(wal.getLastIndex());
+        this.lastTerm = new AtomicLong(wal.getLastTerm());
     }
 
     private DefaultLog() {
     }
 
     public DefaultLog(String walPath) throws RocksDBException {
-        lastIndex = -1;
-        lastTerm = -1;
-        Wal wal = new DefaultWal(walPath);
-        this.wal = wal;
+        wal = new DefaultWal(walPath);
         updateFromWal();
     }
 
@@ -34,11 +33,11 @@ public class DefaultLog implements Log{
     }
 
     private void setLastTerm(long lastTerm) {
-        this.lastTerm = lastTerm;
+        this.lastTerm.set(lastTerm);
     }
 
     private void setLastIndex(long lastIndex) {
-        this.lastIndex = lastIndex;
+        this.lastIndex.set(lastIndex);
     }
 
     public static Log newInstance(String walPath) throws RocksDBException {
@@ -52,12 +51,12 @@ public class DefaultLog implements Log{
 
     @Override
     public long getLastTerm() {
-        return lastTerm;
+        return lastTerm.get();
     }
 
     @Override
     public long getLastIndex() {
-        return lastIndex;
+        return lastIndex.get();
     }
 
     @Override
@@ -71,26 +70,18 @@ public class DefaultLog implements Log{
     }
 
     @Override
-    public synchronized void append(Entry entry) {
-        Assert.checkNull(entry, "entry");
-        Assert.check(!(entry.getTerm()<getLastTerm()), "entry term error");
+    public long append(Entry entry) {
         setLastTerm(entry.getTerm());
-        ++lastIndex;
-        wal.put(lastIndex, entry);
-        wal.setLastIndex(lastIndex);
-        wal.setLastTerm(lastTerm);
+        long index = lastIndex.incrementAndGet();
+        wal.put(index, entry);
+        wal.setLastIndex(index);
+        wal.setLastTerm(lastTerm.get());
+        return index;
     }
 
     @Override
     public synchronized void append(Entry[] entries) {
-        Assert.checkNull(entries, "entries");
-        Assert.check(!(entries[0].getTerm()<getLastTerm()), "entries term error");
-        setLastTerm(entries[entries.length-1].getTerm());
-        long[] indexArray = LongStream.range(lastIndex+1, lastIndex+1+entries.length).toArray();
-        setLastIndex(lastIndex+entries.length);
-        wal.put(indexArray, entries);
-        wal.setLastIndex(lastIndex);
-        wal.setLastTerm(lastTerm);
+        Arrays.stream(entries).forEach(this::append);
     }
 
     @Override

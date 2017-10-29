@@ -7,13 +7,12 @@ import io.jiache.core.Session;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ThreadPoolExecutor;
 
 public class OffloadTest {
+    private final static int benchMarkSize = 1000;
     public static void main(String[] args) throws InterruptedException {
         new Thread(()-> MainServer.main(new String[]{"--host=127.0.0.1", "--port=8081"})).start();
-        TimeUnit.SECONDS.sleep(1);
 
         List<Session> sessions = new ArrayList<>();
         sessions.add(new Session("127.0.0.1", 8081));
@@ -29,28 +28,11 @@ public class OffloadTest {
         Client client = new Client(sessions);
         client.newRaftCluster("raft0", serverAddresses,3,secretaryAddresses);
 
-        for(int i=0; i<1000; ++i) {
-            String key = "myKey"+i;
-            String value = "myValue"+i;
-            client.put("raft0", key, value);
+        client.put("raft0", "myKey", "myValue").join();
+        String v = null;
+        while (v==null) {
+            v = client.get("raft0", "myKey").join();
         }
-
-        List<Future<String>> futureList = new ArrayList<>();
-        for(int i=0; i<1000; ++i) {
-            String key = "myKey"+i;
-            futureList.add(client.get("raft0",key));
-        }
-        futureList.clear();
-        for(int i=0; i<1000; ++i) {
-            String key = "myKey"+i;
-            for(;;) {
-                String value = client.get("raft0", key).join();
-                if(value != null) {
-                    System.out.println(value);
-                    break;
-                }
-            }
-        }
-
+        System.out.println(v);
     }
 }

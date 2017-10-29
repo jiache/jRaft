@@ -38,11 +38,18 @@ public class Leader extends BaseServer{
     }
 
     public void put(Entry entry) {
-        log.append(entry);
+        long index = log.append(entry);
+        while(lastCommitIndex<index) {
+            try {
+                Thread.sleep(1);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     public void put(Entry[] entries) {
-        log.append(entries);
+        Arrays.stream(entries).forEach(this::put);
     }
 
     private void matainCommit() {
@@ -52,45 +59,43 @@ public class Leader extends BaseServer{
             sortedNextIndex = Arrays.copyOfRange(nextIndex, 0, nextIndex.length);
             Arrays.sort(sortedNextIndex);
             long newCommitIndex = sortedNextIndex[sortedNextIndex.length/2+1]-1;
-
             if(newCommitIndex > lastCommitIndex) {
                 commit(newCommitIndex);
-                lastCommitIndex = newCommitIndex;
             }
         }
     }
 
-    @Override
-    public void run() {
-        executorService.submit(this::matainCommit);
-        List<Address> addresses = raftConf.getAddressList();
+    private void appendEntriesToFollower(int followerIndex) {
+        if(raftLocks[followerIndex].tryLock()) {
+            Entry entry;
+            long lastIndex = log.getLastIndex();
+            if(nextIndex[followerIndex]<=lastIndex) {
+                entry = log.get(nextIndex[followerIndex]);
+            } else {
+                entry = new Entry(null, null, term);
+            }
+            AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
+                    .setCommittedIndex(lastCommitIndex.intValue())
+                    .setTerm(term)
+                    .setEntry(new String(Serializer.serialize(entry)))
+                    .setPreLogIndex(nextIndex[followerIndex].intValue()-1)
+                    .build();
+            AppendEntriesResponse response = blockingStubList.get(followerIndex).appendEntries(request);
+            if(response.getSuccess() && entry.getKey()!=null) {
+                ++nextIndex[followerIndex];
+            } else if(term < response.getTerm()) {
+                term = response.getTerm(); // TODO become follower
+            }
+            raftLocks[followerIndex].unlock();
+        }
+    }
+
+    private void appendEntriesToFollowers() {
         for(;;) {
-            for (int i = 0; i < addresses.size(); ++i) {
-                long lastIndex = log.getLastIndex();
+            for (int i = 0; i < raftConf.getAddressList().size(); ++i) {
                 if (i != thisIndex) {
-                    ServerServiceGrpc.ServerServiceBlockingStub blockingStub
-                            = blockingStubList.get(i);
-                    Entry entry;
-                    if(nextIndex[i]<=log.getLastIndex()) {
-                        entry = log.get(nextIndex[i]);
-                    } else {
-                        entry = new Entry(null, null, term);
-                    }
-                    AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
-                            .setCommittedIndex((int) lastCommitIndex)
-                            .setTerm(term)
-                            .setEntry(new String(Serializer.serialize(entry)))
-                            .setPreLogIndex((int) (nextIndex[i]-1))
-                            .build();
                     int finalI = i;
-                    executorService.submit(() -> {
-                        AppendEntriesResponse response = blockingStub.appendEntries(request);
-                        if(response.getSuccess() && nextIndex[finalI]<=lastIndex) {
-                            ++nextIndex[finalI];
-                        } else if(term < response.getTerm()) {
-                            term = response.getTerm(); // TODO become follower
-                        }
-                    });
+                    executorService.submit(()->appendEntriesToFollower(finalI));
                 }
             }
             try {
@@ -99,5 +104,12 @@ public class Leader extends BaseServer{
                 e.printStackTrace();
             }
         }
+    }
+
+
+    @Override
+    public void run() {
+        executorService.submit(this::appendEntriesToFollowers);
+        executorService.submit(this::matainCommit);
     }
 }

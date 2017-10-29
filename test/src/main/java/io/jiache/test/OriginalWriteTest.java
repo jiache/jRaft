@@ -14,7 +14,6 @@ public class OriginalWriteTest {
 
     public static void main(String[] args) throws InterruptedException {
         new Thread(()-> MainServer.main(new String[]{"--host=127.0.0.1", "--port=8081"})).start();
-        TimeUnit.SECONDS.sleep(1);
 
         List<Session> sessions = new ArrayList<>();
         sessions.add(new Session("127.0.0.1", 8081));
@@ -26,24 +25,25 @@ public class OriginalWriteTest {
         serverAddresses.add(new Address("127.0.0.1", 9904));
 
         List<Address> secretaryAddresses = new ArrayList<>();
-        secretaryAddresses.add(new Address("127.0.0.1", 9905));
         Client client = new Client(sessions);
-        client.newRaftCluster("raft0", serverAddresses,3,null);
+        client.newRaftCluster("raft0", serverAddresses,3,secretaryAddresses);
 
         long begin = System.currentTimeMillis();
         for(int i=0; i<benchMarkSize; ++i) {
             String key = "myKey"+i;
-            String value = "myValue"+i;
-            client.put("raft0", key, value);
+            String value = "myValuec"+i;
+            client.put("raft0", key, value).thenRun(()->System.out.println("put key:"+key));
         }
-        for(int i=0; i<benchMarkSize-10; ++i) {
+
+        for(int i=0; i<benchMarkSize; ++i) {
             String key = "myKey"+i;
             String value = null;
             while(value == null) {
                 value = client.get("raft0", key).join();
-//                if(value!=null) {
-//                    System.out.println(value);
-//                }
+                if(value!=null) {
+                    System.out.println(value);
+                }
+                Thread.interrupted();
             }
         }
         long end = System.currentTimeMillis();

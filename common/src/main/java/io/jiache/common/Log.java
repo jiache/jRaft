@@ -8,7 +8,7 @@ public interface Log {
     long getLastIndex();
     Entry get(long index);
     Entry[] get(long[] index);
-    void append(Entry entry);
+    long append(Entry entry);
     void append(Entry... entries);
     boolean match(long lastTerm, long lastIndex);
 }

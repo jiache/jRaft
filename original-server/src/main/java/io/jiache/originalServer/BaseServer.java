@@ -14,21 +14,24 @@ import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.LongStream;
 
 abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase implements Server{
-    protected int term;
-    protected long lastCommitIndex;
+    protected Integer term;
+    protected volatile Long lastCommitIndex;
     protected Log log; // 线程安全
     protected StateMachine stateMachine;
     protected ExecutorService executorService;
     protected RaftConf raftConf;
-    protected int thisIndex;
+    protected Integer thisIndex;
     protected Long[] nextIndex;
+    protected Lock[] raftLocks;
 
     protected BaseServer(RaftConf raftConf, int thisIndex) {
         term = 0;
-        lastCommitIndex = -1;
+        lastCommitIndex = -1L;
         try {
             log = new DefaultLog(raftConf.getToken()+"-"+UUID.randomUUID().toString());
         } catch (RocksDBException e) {
@@ -52,6 +55,10 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
         this.thisIndex = thisIndex;
         nextIndex = new Long[raftConf.getAddressList().size()];
         Arrays.fill(nextIndex, 0L);
+        raftLocks = new ReentrantLock[nextIndex.length];
+        for(int i=0; i<raftLocks.length; ++i) {
+            raftLocks[i] = new ReentrantLock();
+        }
     }
 
     public synchronized void commit(long toIndex) {
@@ -59,7 +66,6 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
         Entry[] entries = log.get(logIndex);
         stateMachine.commit(entries);
         lastCommitIndex = toIndex;
-
     }
 
     public String get(String key) {
@@ -67,7 +73,7 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
     }
 
     @Override
-    public synchronized void appendEntries(AppendEntriesRequest request, StreamObserver<AppendEntriesResponse> responseObserver) {
+    public void appendEntries(AppendEntriesRequest request, StreamObserver<AppendEntriesResponse> responseObserver) {
         int term0 = request.getTerm();
         AppendEntriesResponse.Builder responseBuilder = AppendEntriesResponse.newBuilder();
         if(term0<term) {
@@ -91,11 +97,10 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
         if(entry0.getKey() != null) {
             log.append(entry0);
         }
-        int committedIndex0 = request.getCommittedIndex();
-        committedIndex0 = (int) Math.min(committedIndex0, log.getLastIndex());
+        long committedIndex0 = request.getCommittedIndex();
+        committedIndex0 = Math.min(committedIndex0, log.getLastIndex());
         if(committedIndex0>lastCommitIndex) {
             commit(committedIndex0);
-            lastCommitIndex = committedIndex0;
         }
         responseBuilder.setTerm(term)
                 .setSuccess(true);

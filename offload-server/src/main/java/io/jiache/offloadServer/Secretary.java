@@ -14,14 +14,17 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implements Server {
-    protected int term;
-    protected Log log;
-    protected ExecutorService executorService;
-    protected RaftConf raftConf;
-    protected int thisIndex;
-    protected Long[] nextIndex;
+    private int term;
+    private Log log;
+    private ExecutorService executorService;
+    private RaftConf raftConf;
+    private int thisIndex;
+    private Long[] nextIndex;
+    private Lock[] raftLocks;
     private List<ServerServiceGrpc.ServerServiceBlockingStub> raftStubList;
 
     public Secretary(RaftConf raftConf, int thisIndex) {
@@ -32,6 +35,10 @@ public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implement
         executorService = Executors.newCachedThreadPool();
         nextIndex = new Long[raftConf.getAddressList().size()];
         Arrays.fill(nextIndex, 0L);
+        raftLocks = new ReentrantLock[nextIndex.length];
+        for(int i=0; i<raftLocks.length; ++i) {
+            raftLocks[i] = new ReentrantLock();
+        }
         raftStubList = new ArrayList<>();
         executorService.submit(()->{
             try {
@@ -47,17 +54,13 @@ public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implement
             }
         });
         List<Address> raftAddresses = raftConf.getAddressList();
-        for(int i=0; i<raftAddresses.size(); ++i) {
-            ServerServiceGrpc.ServerServiceBlockingStub blockingStub = null;
-            if(i!=thisIndex) {
-                ManagedChannel managedChannel = ManagedChannelBuilder
-                        .forAddress(raftAddresses.get(i).getHost(), raftAddresses.get(i).getPort())
-                        .usePlaintext(true)
-                        .build();
-                blockingStub = ServerServiceGrpc.newBlockingStub(managedChannel);
-            }
-            raftStubList.add(blockingStub);
-        }
+        raftAddresses.forEach(address -> {
+            ManagedChannel managedChannel = ManagedChannelBuilder
+                    .forAddress(address.getHost(), address.getPort())
+                    .usePlaintext(true)
+                    .build();
+            raftStubList.add(ServerServiceGrpc.newBlockingStub(managedChannel));
+        });
     }
 
     @Override
@@ -79,10 +82,10 @@ public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implement
                     .build();
             responseObserver.onNext(response);
             responseObserver.onCompleted();
-        } else if(term0 > term) { // TODO detective a new leader
+        } else if(term0 > term) { // TODO detect a new leader
             term = (int) term0;
             AppendEntriesResponse response = responseBuilder
-                    .setSuccess(true)
+                    .setSuccess(false)
                     .setTerm(term)
                     .build();
             responseObserver.onNext(response);
@@ -98,22 +101,25 @@ public class Secretary extends ServerServiceGrpc.ServerServiceImplBase implement
     }
 
     private void appendEntriesToFollower(int followerIndex) {
-        long lastIndex = log.getLastIndex();
-        for(long i=nextIndex[followerIndex]; i<=lastIndex; ++i) {
-            AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
-                    .setTerm(term)
-                    .setPreLogIndex((int) (i - 1))
-                    .setEntry(new String(Serializer.serialize(log.get(i))))
-                    .build();
-            AppendEntriesResponse response = raftStubList.get(followerIndex)
-                    .appendEntries(request);
-            if(!response.getSuccess()) {
-                nextIndex[followerIndex] = i+1;
-                return;
+        if(raftLocks[followerIndex].tryLock()) {
+            long lastIndex = log.getLastIndex();
+            for (long i = nextIndex[followerIndex]; i <= lastIndex; ++i) {
+                AppendEntriesRequest request = AppendEntriesRequest.newBuilder()
+                        .setTerm(term)
+                        .setPreLogIndex((int) (i - 1))
+                        .setEntry(new String(Serializer.serialize(log.get(i))))
+                        .build();
+                AppendEntriesResponse response = raftStubList.get(followerIndex)
+                        .appendEntries(request);
+                if (!response.getSuccess()) {
+//                    nextIndex[followerIndex] = i + 1;
+                    raftLocks[followerIndex].unlock();
+                    return;
+                }
             }
+            nextIndex[followerIndex] = lastIndex + 1;
+            raftLocks[followerIndex].unlock();
         }
-
-        nextIndex[followerIndex] = lastIndex+1;
     }
 
     private void appendEntriesToFollowers() {

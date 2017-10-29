@@ -25,9 +25,8 @@ message CallBackResponse{
 
 message AppendEntriesRequest{
     int32 term = 1;
-//    int32 committedIndex = 2;
-    int32 preLogIndex = 3;
-    string entry = 4;
+    int32 preLogIndex = 2;
+    string entry = 3;
 }
 
 message AppendEntriesResponse{
