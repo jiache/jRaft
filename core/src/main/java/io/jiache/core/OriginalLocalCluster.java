@@ -67,9 +67,11 @@ public class OriginalLocalCluster implements LocalCluster{
 
     @Override
     public String get(String key) {
-        if(running) {
+        if(running && cluster.size()>0) {
             Server server = cluster.get(Random.randomInt(cluster.size()));
-            return ((BaseServer) server).get(key);
+            if(server instanceof BaseServer) {
+                return ((BaseServer) server).get(key);
+            }
         }
         return null;
     }

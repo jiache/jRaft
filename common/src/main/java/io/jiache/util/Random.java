@@ -7,6 +7,9 @@ public class Random {
     }
 
     public static int randomInt(int upper) {
+        if(upper<=0) {
+            throw new RuntimeException("random upper is "+upper);
+        }
         return random.nextInt(upper);
     }
 }

@@ -12,14 +12,14 @@ public class TestStrategyImplAllRead implements TestStrategy {
         long begin = System.currentTimeMillis();
         long end;
         for(int i=1; i<=benchmarkSize; ++i) {
-            client.put(token, i + "", "value"+i);
+            client.put(token, i + "", value).join();
         }
-        for(int i=1; i<=benchmarkSize; ++i) {
-            String s = null;
-            while (s == null) {
-                s = client.get(token, i+"").join();
-            }
+        String s = null;
+        while (s == null) {
+            s = client.get(token, benchmarkSize+"").join();
         }
+        System.out.println(s);
+
         end = System.currentTimeMillis();
         double averageResponseTime = (double) (end-begin)/benchmarkSize/1e3;
         double throughput = (double)benchmarkSize*1e3/(end-begin);

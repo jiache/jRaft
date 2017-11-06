@@ -15,6 +15,11 @@ public class TestStrategyImplDebug implements TestStrategy {
             int finalI = i;
             client.put(token, i + "", value).thenRun(()->System.out.println("put "+ finalI)).join();
         }
+        String s = null;
+        while (s == null) {
+            s = client.get(token, benchmarkSize+"").join();
+        }
+        System.out.println(s);
         end = System.currentTimeMillis();
         double averageResponseTime = (double) (end-begin)/benchmarkSize/1e3;
         double throughput = (double)benchmarkSize*1e3/(end-begin);
