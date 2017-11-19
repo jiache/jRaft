@@ -19,6 +19,7 @@ public class Leader extends BaseServer{
         super(raftConf, thisIndex);
         blockingStubList = new ArrayList<>();
         List<Address> addresses = raftConf.getAddressList();
+
         for(int i=0; i<addresses.size(); ++i) {
             ServerServiceGrpc.ServerServiceBlockingStub blockingStub = null;
             if(i!=thisIndex) {
@@ -39,13 +40,6 @@ public class Leader extends BaseServer{
 
     public void put(Entry entry) {
         long index = log.append(entry);
-//        while(lastCommitIndex<index) {
-//            try {
-//                Thread.sleep(1);
-//            } catch (InterruptedException e) {
-//                e.printStackTrace();
-//            }
-//        }
     }
 
     public void put(Entry[] entries) {

@@ -88,6 +88,7 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
             responseObserver.onCompleted();
             return;
         }
+
         term = term0;
         int preLogIndex0 = request.getPreLogIndex();
         Entry entry0 = Serializer.deSerialize(request.getEntry().getBytes(), Entry.class);
