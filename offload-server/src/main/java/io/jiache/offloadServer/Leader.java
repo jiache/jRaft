@@ -123,6 +123,7 @@ public class Leader extends BaseServer {
                 int finalI = i;
                 executorService.submit(()->this.appendEntryToSecretary(finalI));
             }
+
             try {
                 Thread.sleep(OFFLOAD_TO_SECRETARY_INTERVAL);
             } catch (InterruptedException e) {
