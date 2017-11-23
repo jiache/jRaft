@@ -33,3 +33,15 @@ message AppendEntriesResponse{
     int32 term = 1;
     bool success = 2;
 }
+
+service AgentService {
+    rpc GetNewSecretary (GetNewSecretaryRequest) returns (GetNewSecretaryResponse) {}
+}
+
+message GetNewSecretaryRequest {
+}
+
+message GetNewSecretaryResponse {
+    string host = 1;
+    int32 port = 2;
+}

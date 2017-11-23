@@ -7,15 +7,17 @@ public class RaftConf {
     private List<Address> addressList;
     private Integer leaderIndex;
     private List<Address> secretaryAddressList;
+    private Address agentAddress;
 
     public RaftConf() {
     }
 
-    public RaftConf(String token, List<Address> addressList, Integer leaderIndex, List<Address> secretaryAddressList) {
+    public RaftConf(String token, List<Address> addressList, Integer leaderIndex, List<Address> secretaryAddressList, Address agentAddress) {
         this.token = token;
         this.addressList = addressList;
         this.leaderIndex = leaderIndex;
         this.secretaryAddressList = secretaryAddressList;
+        this.agentAddress = agentAddress;
     }
 
     public String getToken() {
@@ -48,5 +50,13 @@ public class RaftConf {
 
     public void setSecretaryAddressList(List<Address> secretaryAddressList) {
         this.secretaryAddressList = secretaryAddressList;
+    }
+
+    public Address getAgentAddress() {
+        return agentAddress;
+    }
+
+    public void setAgentAddress(Address agentAddress) {
+        this.agentAddress = agentAddress;
     }
 }
