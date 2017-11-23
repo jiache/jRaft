@@ -5,16 +5,15 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>jiache</groupId>
-    <artifactId>jRaft</artifactId>
+    <artifactId>jRaft-parent</artifactId>
     <packaging>pom</packaging>
     <version>1.0</version>
     <modules>
         <module>client</module>
-        <module>original-server</module>
-        <module>offload-server</module>
-        <module>core</module>
+        <module>protocol</module>
+        <module>server</module>
+        <module>example</module>
         <module>common</module>
-        <module>test</module>
     </modules>
 
     <dependencies>
@@ -38,12 +37,6 @@
             <groupId>org.rocksdb</groupId>
             <artifactId>rocksdbjni</artifactId>
             <version>5.5.1</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.alibaba</groupId>
-            <artifactId>fastjson</artifactId>
-            <version>1.2.38</version>
         </dependency>
 
         <dependency>
