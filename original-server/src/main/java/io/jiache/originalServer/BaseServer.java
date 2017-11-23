@@ -98,10 +98,12 @@ abstract public class BaseServer extends ServerServiceGrpc.ServerServiceImplBase
             log.append(entry0);
         }
         long committedIndex0 = request.getCommittedIndex();
+
         committedIndex0 = Math.min(committedIndex0, log.getLastIndex());
         if(committedIndex0>lastCommitIndex) {
             commit(committedIndex0);
         }
+
         responseBuilder.setTerm(term)
                 .setSuccess(true);
         responseObserver.onNext(responseBuilder.build());
