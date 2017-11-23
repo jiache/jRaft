@@ -11,6 +11,8 @@ import io.jiache.util.Serializer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -61,6 +63,13 @@ public class Leader extends BaseServer {
 
     public void put(Entry entry) {
         long index = log.append(entry);
+//        while(lastCommitIndex<index) {
+//            try {
+//                Thread.sleep(1);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
     }
 
     public void put(Entry[] entries) {
